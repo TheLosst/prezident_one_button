@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Админка — Загрузки</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial,
+          sans-serif;
+        background: #f5f7fb;
+        color: #0f172a;
+      }
+      .page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+      }
+      .card {
+        width: 100%;
+        max-width: 720px;
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 28px;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 24px;
+      }
+      p {
+        margin: 0 0 20px;
+        color: #475569;
+      }
+      .row {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .btn {
+        appearance: none;
+        border: 0;
+        background: #2563eb;
+        color: white;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition:
+          transform 0.08s ease,
+          box-shadow 0.2s ease;
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn:disabled {
+        background: #94a3b8;
+        box-shadow: none;
+        cursor: not-allowed;
+        opacity: 0.75;
+      }
+      .input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        font-size: 15px;
+        outline: none;
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+      }
+      .status {
+        font-size: 14px;
+        min-height: 20px;
+      }
+      .status.error {
+        color: #dc2626;
+      }
+      .status.ok {
+        color: #16a34a;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 14px;
+      }
+      th {
+        color: #475569;
+        font-weight: 600;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .hidden {
+        display: none;
+      }
+      .file-actions {
+        display: flex;
+        gap: 8px;
+      }
+      a.btn-link {
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="card" id="loginCard">
+        <h1>Вход в админку</h1>
+        <p>Введите логин и пароль.</p>
+        <div class="row">
+          <input class="input" id="username" placeholder="Логин" />
+          <input
+            class="input"
+            id="password"
+            placeholder="Пароль"
+            type="password"
+          />
+          <button class="btn" id="loginBtn">Войти</button>
+          <div class="status" id="loginStatus"></div>
+        </div>
+      </div>
+
+      <div class="card hidden" id="adminCard">
+        <div class="toolbar">
+          <div>
+            <h1>Загруженные файлы</h1>
+            <p>Список файлов и скачивание.</p>
+          </div>
+          <div class="file-actions">
+            <a class="btn btn-link" id="downloadAll" href="/admin/download-all"
+              >Скачать все (zip)</a
+            >
+            <button class="btn" id="refreshBtn">Обновить</button>
+            <button class="btn" id="logoutBtn">Выйти</button>
+          </div>
+        </div>
+        <div class="status" id="adminStatus"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Файл</th>
+              <th>Размер</th>
+              <th>Дата</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="filesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const loginCard = document.getElementById("loginCard");
+      const adminCard = document.getElementById("adminCard");
+      const loginBtn = document.getElementById("loginBtn");
+      const loginStatus = document.getElementById("loginStatus");
+      const refreshBtn = document.getElementById("refreshBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const filesBody = document.getElementById("filesBody");
+      const adminStatus = document.getElementById("adminStatus");
+
+      const formatSize = (bytes) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+      };
+
+      const formatDate = (ms) => {
+        const date = new Date(ms);
+        return date.toLocaleString("ru-RU");
+      };
+
+      const showLogin = () => {
+        loginCard.classList.remove("hidden");
+        adminCard.classList.add("hidden");
+      };
+
+      const showAdmin = () => {
+        loginCard.classList.add("hidden");
+        adminCard.classList.remove("hidden");
+      };
+
+      const loadFiles = async () => {
+        adminStatus.textContent = "";
+        filesBody.innerHTML = "";
+        try {
+          const response = await fetch("/admin/files");
+          if (response.status === 401) {
+            showLogin();
+            return;
+          }
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.message || "Ошибка загрузки списка");
+          }
+          if (!result.files.length) {
+            filesBody.innerHTML = "<tr><td colspan='4'>Файлов нет</td></tr>";
+            return;
+          }
+          filesBody.innerHTML = result.files
+            .map(
+              (file) => `
+            <tr>
+              <td>${file.name}</td>
+              <td>${formatSize(file.size)}</td>
+              <td>${formatDate(file.mtime)}</td>
+              <td><a class="btn btn-link" href="/admin/download/${encodeURIComponent(
+                file.name,
+              )}">Скачать</a></td>
+            </tr>`,
+            )
+            .join("");
+        } catch (error) {
+          adminStatus.textContent = error.message || "Ошибка";
+          adminStatus.className = "status error";
+        }
+      };
+
+      loginBtn.addEventListener("click", async () => {
+        loginStatus.textContent = "";
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+        if (!username || !password) {
+          loginStatus.textContent = "Введите логин и пароль";
+          loginStatus.className = "status error";
+          return;
+        }
+        try {
+          const response = await fetch("/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.message || "Ошибка входа");
+          }
+          showAdmin();
+          await loadFiles();
+        } catch (error) {
+          loginStatus.textContent = error.message || "Ошибка входа";
+          loginStatus.className = "status error";
+        }
+      });
+
+      refreshBtn.addEventListener("click", loadFiles);
+
+      logoutBtn.addEventListener("click", async () => {
+        await fetch("/admin/logout", { method: "POST" });
+        showLogin();
+      });
+
+      loadFiles();
+    </script>
+  </body>
+</html>
