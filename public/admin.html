@@ -100,6 +100,7 @@
       table {
         width: 100%;
         border-collapse: collapse;
+        table-layout: fixed;
       }
       th,
       td {
@@ -111,6 +112,29 @@
       th {
         color: #475569;
         font-weight: 600;
+      }
+      th.col-file,
+      td.col-file {
+        width: 55%;
+      }
+      th.col-size,
+      td.col-size {
+        width: 15%;
+      }
+      th.col-date,
+      td.col-date {
+        width: 20%;
+      }
+      th.col-action,
+      td.col-action {
+        width: 10%;
+        text-align: right;
+      }
+      .file-name-text {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .toolbar {
         display: flex;
@@ -171,10 +195,10 @@
         <table>
           <thead>
             <tr>
-              <th>Файл</th>
-              <th>Размер</th>
-              <th>Дата</th>
-              <th></th>
+              <th class="col-file">Файл</th>
+              <th class="col-size">Размер</th>
+              <th class="col-date">Дата</th>
+              <th class="col-action"></th>
             </tr>
           </thead>
           <tbody id="filesBody"></tbody>
@@ -234,10 +258,13 @@
             .map(
               (file) => `
             <tr>
-              <td>${file.name}</td>
-              <td>${formatSize(file.size)}</td>
-              <td>${formatDate(file.mtime)}</td>
-              <td><a class="btn btn-link" href="/admin/download/${encodeURIComponent(
+              <td class="col-file"><span class="file-name-text" title="${file.name.replaceAll(
+                '"',
+                "&quot;",
+              )}">${file.name}</span></td>
+              <td class="col-size">${formatSize(file.size)}</td>
+              <td class="col-date">${formatDate(file.mtime)}</td>
+              <td class="col-action"><a class="btn btn-link" href="/admin/download/${encodeURIComponent(
                 file.name,
               )}">Скачать</a></td>
             </tr>`,
