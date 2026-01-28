@@ -144,6 +144,11 @@
         justify-content: space-between;
         margin-bottom: 12px;
       }
+      .uploads-count {
+        margin: 0;
+        font-size: 13px;
+        color: #64748b;
+      }
       .hidden {
         display: none;
       }
@@ -182,6 +187,7 @@
           <div>
             <h1>Загруженные файлы</h1>
             <p>Список файлов и скачивание.</p>
+            <p class="uploads-count" id="uploadsCount">Файлов в uploads: 0</p>
           </div>
           <div class="file-actions">
             <a class="btn btn-link" id="downloadAll" href="/admin/download-all"
@@ -215,6 +221,7 @@
       const logoutBtn = document.getElementById("logoutBtn");
       const filesBody = document.getElementById("filesBody");
       const adminStatus = document.getElementById("adminStatus");
+      const uploadsCount = document.getElementById("uploadsCount");
 
       const formatSize = (bytes) => {
         if (bytes < 1024) return `${bytes} B`;
@@ -250,6 +257,11 @@
           if (!response.ok) {
             throw new Error(result.message || "Ошибка загрузки списка");
           }
+          const totalCount =
+            typeof result.count === "number"
+              ? result.count
+              : result.files.length;
+          uploadsCount.textContent = `Файлов в uploads: ${totalCount}`;
           if (!result.files.length) {
             filesBody.innerHTML = "<tr><td colspan='4'>Файлов нет</td></tr>";
             return;
@@ -303,7 +315,11 @@
         }
       });
 
-      refreshBtn.addEventListener("click", loadFiles);
+      refreshBtn.addEventListener("click", async () => {
+        await loadFiles();
+        const rowsCount = filesBody.querySelectorAll("tr").length;
+        console.log(`Таблица /admin: ${rowsCount} строк(и)`);
+      });
 
       logoutBtn.addEventListener("click", async () => {
         await fetch("/admin/logout", { method: "POST" });

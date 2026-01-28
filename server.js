@@ -101,11 +101,11 @@ app.get("/admin/files", requireAdmin, async (_req, res) => {
             size: stat.size,
             mtime: stat.mtimeMs,
           };
-        })
+        }),
     );
 
     files.sort((a, b) => b.mtime - a.mtime);
-    return res.json({ ok: true, files });
+    return res.json({ ok: true, files, count: files.length });
   } catch (error) {
     return res.status(500).json({ ok: false, message: "Ошибка чтения" });
   }
@@ -129,7 +129,7 @@ app.get("/admin/download-all", requireAdmin, async (_req, res) => {
   res.setHeader("Content-Type", "application/zip");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="uploads_${Date.now()}.zip"`
+    `attachment; filename="uploads_${Date.now()}.zip"`,
   );
 
   const archive = archiver("zip", { zlib: { level: 9 } });
