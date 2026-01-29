@@ -104,6 +104,14 @@
       .status.error {
         color: #dc2626;
       }
+      .notice {
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        font-size: 14px;
+      }
       .modal-backdrop {
         position: fixed;
         inset: 0;
@@ -147,7 +155,7 @@
     <div class="page">
       <div class="card">
         <h1>Загрузка файла</h1>
-        <p>Выберите файл и отправьте его на сервер.</p>
+        <p>Введите свое ФИО, выберите файл и загрузите его.</p>
         <div class="row">
           <input
             class="input"
@@ -158,6 +166,10 @@
             required
             maxlength="40"
           />
+          <div class="notice">
+            Если файлов несколько, не загружайте их по одному. Сначала
+            заархивируйте все файлы в один архив, а затем загрузите его.
+          </div>
           <label class="btn" for="fileInput">Выбрать файл</label>
           <div class="file-name" id="fileName">Файл не выбран</div>
           <button class="btn" id="uploadBtn" disabled>Загрузить</button>
@@ -188,6 +200,17 @@
       const status = document.getElementById("status");
       const successModal = document.getElementById("successModal");
       const closeModalBtn = document.getElementById("closeModalBtn");
+
+      const ensureAuth = async () => {
+        try {
+          const response = await fetch("/upload/session");
+          if (!response.ok) {
+            window.location.href = "/upload-login";
+          }
+        } catch (error) {
+          window.location.href = "/upload-login";
+        }
+      };
 
       const updateUploadState = () => {
         const hasFile = Boolean(fileInput.files && fileInput.files[0]);
@@ -280,6 +303,8 @@
           closeModal();
         }
       });
+
+      ensureAuth();
     </script>
   </body>
 </html>

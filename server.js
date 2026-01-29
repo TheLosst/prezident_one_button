@@ -10,7 +10,10 @@ const PORT = process.env.PORT || 3000;
 
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "password";
+const UPLOAD_USER = "uploader";
+const UPLOAD_PASS = "uploadpass";
 let adminToken = null;
+let uploadToken = null;
 
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -64,8 +67,20 @@ const requireAdmin = (req, res, next) => {
   return next();
 };
 
+const requireUploadAuth = (req, res, next) => {
+  const token = getCookie(req, "upload_auth");
+  if (!token || !uploadToken || token !== uploadToken) {
+    return res.status(401).json({ ok: false, message: "Не авторизован" });
+  }
+  return next();
+};
+
 app.get("/admin", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/upload-login", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "upload-login.html"));
 });
 
 app.post("/admin/login", (req, res) => {
@@ -85,6 +100,33 @@ app.post("/admin/logout", (req, res) => {
   adminToken = null;
   res.cookie("admin_auth", "", { maxAge: 0 });
   return res.json({ ok: true });
+});
+
+app.post("/upload/login", (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === UPLOAD_USER && password === UPLOAD_PASS) {
+    uploadToken = nanoid(24);
+    res.cookie("upload_auth", uploadToken, {
+      httpOnly: true,
+      sameSite: "lax",
+    });
+    return res.json({ ok: true });
+  }
+  return res.status(401).json({ ok: false, message: "Неверные данные" });
+});
+
+app.post("/upload/logout", (req, res) => {
+  uploadToken = null;
+  res.cookie("upload_auth", "", { maxAge: 0 });
+  return res.json({ ok: true });
+});
+
+app.get("/upload/session", (req, res) => {
+  const token = getCookie(req, "upload_auth");
+  if (token && uploadToken && token === uploadToken) {
+    return res.json({ ok: true });
+  }
+  return res.status(401).json({ ok: false });
 });
 
 app.get("/admin/files", requireAdmin, async (_req, res) => {
@@ -146,7 +188,7 @@ app.get("/admin/download-all", requireAdmin, async (_req, res) => {
   archive.finalize();
 });
 
-app.post("/upload", upload.single("file"), (req, res) => {
+app.post("/upload", requireUploadAuth, upload.single("file"), (req, res) => {
   const fio = sanitizeFio(req.body?.fio || "");
   if (!fio) {
     if (req.file?.path) {
