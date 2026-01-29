@@ -9,9 +9,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ADMIN_USER = "admin";
-const ADMIN_PASS = "password";
+const ADMIN_PASS = "6kv8cHujbo9H";
 const UPLOAD_USER = "uploader";
-const UPLOAD_PASS = "uploadpass";
+const UPLOAD_PASS = "mGe1pYeVkJCk";
 let adminToken = null;
 let uploadToken = null;
 
