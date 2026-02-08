@@ -143,6 +143,29 @@
         font-size: 13px;
         color: #475569;
       }
+      .progress-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+      .btn-cancel {
+        appearance: none;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #0f172a;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+      .btn-cancel:hover {
+        background: #f1f5f9;
+      }
+      .btn-cancel:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
       .modal-backdrop {
         position: fixed;
         inset: 0;
@@ -212,6 +235,11 @@
               <span id="progressPercent">0%</span>
               <span id="progressSpeed">0 KB/s</span>
             </div>
+            <div class="progress-actions">
+              <button class="btn-cancel" id="cancelUploadBtn" type="button">
+                Отменить загрузку
+              </button>
+            </div>
           </div>
           <div class="status" id="status"></div>
         </div>
@@ -244,6 +272,8 @@
       const progressFill = document.getElementById("progressFill");
       const progressPercent = document.getElementById("progressPercent");
       const progressSpeed = document.getElementById("progressSpeed");
+      const cancelUploadBtn = document.getElementById("cancelUploadBtn");
+      let activeUploadXhr = null;
 
       const ensureAuth = async () => {
         try {
@@ -280,6 +310,8 @@
         progressFill.style.width = "0%";
         progressPercent.textContent = "0%";
         progressSpeed.textContent = "0 KB/s";
+        cancelUploadBtn.disabled = true;
+        activeUploadXhr = null;
       };
 
       const formatSpeed = (bytesPerSec) => {
@@ -329,6 +361,7 @@
         progressFill.style.width = "0%";
         progressPercent.textContent = "0%";
         progressSpeed.textContent = "0 KB/s";
+        cancelUploadBtn.disabled = false;
 
         const uploadStartedAt = Date.now();
         let lastBytes = 0;
@@ -341,6 +374,7 @@
 
           const response = await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
+            activeUploadXhr = xhr;
             xhr.open("POST", "/upload");
             xhr.responseType = "json";
             xhr.upload.onprogress = (event) => {
@@ -361,6 +395,7 @@
             };
             xhr.onload = () => resolve(xhr);
             xhr.onerror = () => reject(new Error("Сеть недоступна"));
+            xhr.onabort = () => reject(new Error("Загрузка отменена"));
             xhr.send(formData);
           });
 
@@ -383,6 +418,12 @@
         } finally {
           resetProgress();
           updateUploadState();
+        }
+      });
+
+      cancelUploadBtn.addEventListener("click", () => {
+        if (activeUploadXhr) {
+          activeUploadXhr.abort();
         }
       });
 
