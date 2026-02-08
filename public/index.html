@@ -376,7 +376,7 @@
             const xhr = new XMLHttpRequest();
             activeUploadXhr = xhr;
             xhr.open("POST", "/upload");
-            xhr.responseType = "json";
+            xhr.responseType = "text";
             xhr.upload.onprogress = (event) => {
               if (!event.lengthComputable) return;
               const percent = Math.round((event.loaded / event.total) * 100);
@@ -399,8 +399,23 @@
             xhr.send(formData);
           });
 
-          const result = response.response || {};
+          let result = {};
+          if (response.responseText) {
+            try {
+              result = JSON.parse(response.responseText);
+            } catch (parseError) {
+              result = {};
+            }
+          }
 
+          if (
+            response.status === 413 ||
+            (response.responseText || "")
+              .toLowerCase()
+              .includes("request entity too large")
+          ) {
+            throw new Error("Файл слишком большой");
+          }
           if (response.status < 200 || response.status >= 300) {
             throw new Error(result.message || "Ошибка загрузки");
           }
