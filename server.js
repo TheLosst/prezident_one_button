@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "6kv8cHujbo9H";
 const UPLOAD_USER = "uploader";
-const UPLOAD_PASS = "mGe1pYeVkJCk";
+const UPLOAD_PASS = "Asd12345";
 let adminToken = null;
 let uploadToken = null;
 
