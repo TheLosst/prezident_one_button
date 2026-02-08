@@ -1,9 +1,13 @@
 services:
   app:
     build: .
-    ports:
-      - "3000:3000"
     environment:
       - PORT=3000
     volumes:
       - ./uploads:/app/uploads
+    networks:
+      - npm
+
+networks:
+  npm:
+    external: true
