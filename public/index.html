@@ -112,6 +112,37 @@
         color: #9a3412;
         font-size: 14px;
       }
+      .progress {
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
+      .progress.active {
+        display: flex;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 10px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #2563eb, #38bdf8);
+        transition: width 0.2s ease;
+      }
+      .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: #475569;
+      }
       .modal-backdrop {
         position: fixed;
         inset: 0;
@@ -173,6 +204,15 @@
           <label class="btn" for="fileInput">Выбрать файл</label>
           <div class="file-name" id="fileName">Файл не выбран</div>
           <button class="btn" id="uploadBtn" disabled>Загрузить</button>
+          <div class="progress" id="progressWrap" aria-live="polite">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-meta">
+              <span id="progressPercent">0%</span>
+              <span id="progressSpeed">0 KB/s</span>
+            </div>
+          </div>
           <div class="status" id="status"></div>
         </div>
         <input type="file" id="fileInput" />
@@ -200,6 +240,10 @@
       const status = document.getElementById("status");
       const successModal = document.getElementById("successModal");
       const closeModalBtn = document.getElementById("closeModalBtn");
+      const progressWrap = document.getElementById("progressWrap");
+      const progressFill = document.getElementById("progressFill");
+      const progressPercent = document.getElementById("progressPercent");
+      const progressSpeed = document.getElementById("progressSpeed");
 
       const ensureAuth = async () => {
         try {
@@ -231,12 +275,31 @@
         successModal.setAttribute("aria-hidden", "true");
       };
 
+      const resetProgress = () => {
+        progressWrap.classList.remove("active");
+        progressFill.style.width = "0%";
+        progressPercent.textContent = "0%";
+        progressSpeed.textContent = "0 KB/s";
+      };
+
+      const formatSpeed = (bytesPerSec) => {
+        if (!Number.isFinite(bytesPerSec) || bytesPerSec <= 0) {
+          return "0 KB/s";
+        }
+        if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} B/s`;
+        if (bytesPerSec < 1024 * 1024) {
+          return `${Math.round(bytesPerSec / 1024)} KB/s`;
+        }
+        return `${(bytesPerSec / (1024 * 1024)).toFixed(2)} MB/s`;
+      };
+
       fileInput.addEventListener("change", () => {
         const file = fileInput.files[0];
         if (file) {
           fileName.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
           status.textContent = "";
           status.className = "status";
+          resetProgress();
         }
         updateUploadState();
       });
@@ -262,20 +325,48 @@
         uploadBtn.disabled = true;
         status.textContent = "Загрузка...";
         status.className = "status";
+        progressWrap.classList.add("active");
+        progressFill.style.width = "0%";
+        progressPercent.textContent = "0%";
+        progressSpeed.textContent = "0 KB/s";
+
+        const uploadStartedAt = Date.now();
+        let lastBytes = 0;
+        let lastTime = uploadStartedAt;
 
         try {
           const formData = new FormData();
           formData.append("fio", fio);
           formData.append("file", file);
 
-          const response = await fetch("/upload", {
-            method: "POST",
-            body: formData,
+          const response = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/upload");
+            xhr.responseType = "json";
+            xhr.upload.onprogress = (event) => {
+              if (!event.lengthComputable) return;
+              const percent = Math.round((event.loaded / event.total) * 100);
+              progressFill.style.width = `${percent}%`;
+              progressPercent.textContent = `${percent}%`;
+
+              const now = Date.now();
+              const timeDelta = (now - lastTime) / 1000;
+              if (timeDelta >= 0.4) {
+                const bytesDelta = event.loaded - lastBytes;
+                const speed = bytesDelta / timeDelta;
+                progressSpeed.textContent = formatSpeed(speed);
+                lastBytes = event.loaded;
+                lastTime = now;
+              }
+            };
+            xhr.onload = () => resolve(xhr);
+            xhr.onerror = () => reject(new Error("Сеть недоступна"));
+            xhr.send(formData);
           });
 
-          const result = await response.json();
+          const result = response.response || {};
 
-          if (!response.ok) {
+          if (response.status < 200 || response.status >= 300) {
             throw new Error(result.message || "Ошибка загрузки");
           }
 
@@ -283,11 +374,14 @@
           status.className = "status ok";
           fileInput.value = "";
           fileInput.dispatchEvent(new Event("change"));
+          progressFill.style.width = "100%";
+          progressPercent.textContent = "100%";
           openModal();
         } catch (err) {
           status.textContent = err.message || "Ошибка загрузки";
           status.className = "status error";
         } finally {
+          resetProgress();
           updateUploadState();
         }
       });
